@@ -3,86 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fullscreen Image Viewer with turn.js</title>
+    <title>PDF Viewer with turn.js</title>
+    <script src="https://unpkg.com/pdfjs-dist@2.13.272/build/pdf.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/turn.js/4.0.1/turn.min.js"></script>
     <style>
-        body, html {
+        body {
             margin: 0;
-            padding: 0;
             overflow: hidden;
         }
 
-        .magazine {
+        #pdf-viewer {
             width: 100vw;
             height: 100vh;
-            overflow: hidden;
         }
 
-        .magazine div {
-            width: 100%;
-            height: 100%;
-        }
-
-        .magazine img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
+        #drop-area {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            display: none;
         }
     </style>
 </head>
 <body>
-    <div class="magazine">
-        <!-- Images will be dynamically loaded here -->
+    <div id="pdf-viewer"></div>
+
+    <!-- Drop area for PDF file -->
+    <div id="drop-area">
+        <p>Drop PDF file here</p>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/turn.js/4.1.0/turn.min.js"></script>
-
     <script>
-        let isFullScreen = false;
+        // PDF to Image conversion using pdf.js
+        function renderPDF(url, canvasContainer) {
+            pdfjsLib.getDocument(url).promise.then(function(pdf) {
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    pdf.getPage(i).then(function(page) {
+                        let viewport = page.getViewport({ scale: 1.5 });
+                        let canvas = document.createElement('canvas');
+                        canvas.width = viewport.width;
+                        canvas.height = viewport.height;
+                        canvasContainer.appendChild(canvas);
 
-        document.body.ondragover = function (e) {
-            e.preventDefault();
-        };
-
-        document.body.ondrop = function (e) {
-            e.preventDefault();
-
-            const file = e.dataTransfer.files[0];
-
-            if (file.type.startsWith('image/')) {
-                loadAndDisplayImage(file);
-            } else {
-                alert('Please drop a valid image file.');
-            }
-        };
-
-        function loadAndDisplayImage(imageFile) {
-            const reader = new FileReader();
-
-            reader.onload = function (e) {
-                const imageUrl = e.target.result;
-                $('.magazine').html(`<div><img src="${imageUrl}"></div>`);
-                toggleFullScreen();
-            };
-
-            reader.readAsDataURL(imageFile);
+                        page.render({
+                            canvasContext: canvas.getContext('2d'),
+                            viewport: viewport
+                        });
+                    });
+                }
+            });
         }
 
-        function toggleFullScreen() {
-            const doc = window.document;
-            const docEl = doc.documentElement;
-
-            const requestFullScreen = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullScreen || docEl.msRequestFullscreen;
-
-            if (!isFullScreen) {
-                requestFullScreen.call(docEl);
-                $('.magazine').turn({
-                    width: 800,
-                    height: 600,
-                    autoCenter: true
-                });
-            }
+        // Initialize turn.js with the rendered images
+        function initTurn() {
+            $("#pdf-viewer").turn();
         }
+
+        // Handle drag and drop events
+        let dropArea = document.getElementById('drop-area');
+        dropArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            dropArea.style.display = 'flex';
+        });
+
+        dropArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            dropArea.style.display = 'none';
+            let file = e.dataTransfer.files[0];
+            
+            if (file && file.name.toLowerCase().endsWith('.pdf')) {
+                let reader = new FileReader();
+                reader.onload = function(event) {
+                    let pdfData = new Uint8Array(event.target.result);
+                    pdfjsLib.getDocument({data: pdfData}).promise.then(function(pdf) {
+                        renderPDF({data: pdfData}, document.getElementById('pdf-viewer'));
+                        setTimeout(initTurn, 1000);
+                    });
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        });
+
+        // Replace 'your_pdf_file.pdf' with your actual PDF file path
+        // renderPDF('your_pdf_file.pdf', document.getElementById('pdf-viewer'));
+        // setTimeout(initTurn, 1000);
     </script>
 </body>
 </html>
