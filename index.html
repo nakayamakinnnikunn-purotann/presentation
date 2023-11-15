@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Viewer with turn.js</title>
+    <title>Fullscreen Image Viewer with turn.js</title>
     <style>
         body, html {
             margin: 0;
@@ -27,22 +27,11 @@
             height: 100%;
             object-fit: contain;
         }
-
-        #fullscreenBtn {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            cursor: pointer;
-        }
     </style>
 </head>
 <body>
     <div class="magazine">
-        <!-- Pages will be dynamically loaded here -->
-    </div>
-
-    <div id="fullscreenBtn" onclick="toggleFullScreen()">
-        Toggle Fullscreen
+        <!-- Images will be dynamically loaded here -->
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
@@ -50,30 +39,6 @@
 
     <script>
         let isFullScreen = false;
-
-        function loadPdf(pdfFile) {
-            const reader = new FileReader();
-
-            reader.onload = function (e) {
-                const pdfData = e.target.result;
-
-                // Perform PDF to image conversion (Replace this with your own conversion logic)
-                // For simplicity, we'll just display a placeholder image for each page
-                const totalPages = 10;  // Replace with the actual number of pages
-
-                for (let i = 1; i <= totalPages; i++) {
-                    $('.magazine').append(`<div><img src="placeholder_image.png"></div>`);
-                }
-
-                $('.magazine').turn({
-                    width: 800,
-                    height: 600,
-                    autoCenter: true
-                });
-            };
-
-            reader.readAsDataURL(pdfFile);
-        }
 
         document.body.ondragover = function (e) {
             e.preventDefault();
@@ -84,27 +49,39 @@
 
             const file = e.dataTransfer.files[0];
 
-            if (file.type === 'application/pdf') {
-                loadPdf(file);
+            if (file.type.startsWith('image/')) {
+                loadAndDisplayImage(file);
             } else {
-                alert('Please drop a valid PDF file.');
+                alert('Please drop a valid image file.');
             }
         };
+
+        function loadAndDisplayImage(imageFile) {
+            const reader = new FileReader();
+
+            reader.onload = function (e) {
+                const imageUrl = e.target.result;
+                $('.magazine').html(`<div><img src="${imageUrl}"></div>`);
+                toggleFullScreen();
+            };
+
+            reader.readAsDataURL(imageFile);
+        }
 
         function toggleFullScreen() {
             const doc = window.document;
             const docEl = doc.documentElement;
 
             const requestFullScreen = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullScreen || docEl.msRequestFullscreen;
-            const cancelFullScreen = doc.exitFullscreen || doc.mozCancelFullScreen || doc.webkitExitFullscreen || doc.msExitFullscreen;
 
             if (!isFullScreen) {
                 requestFullScreen.call(docEl);
-            } else {
-                cancelFullScreen.call(doc);
+                $('.magazine').turn({
+                    width: 800,
+                    height: 600,
+                    autoCenter: true
+                });
             }
-
-            isFullScreen = !isFullScreen;
         }
     </script>
 </body>
